@@ -83,6 +83,8 @@ public final class NetworkUtils {
     /* The days parameter allows us to designate how many days of weather data we want */
     private static final String DAYS_PARAM = "cnt";
 
+    private static final int TIMEOUT_SECONDS = 5000;
+
     /**
      * Retrieves the proper URL to query for the weather data. The reason for both this method as
      * well as {@link #buildUrlWithLocationQuery(String)} is two fold.
@@ -170,9 +172,18 @@ public final class NetworkUtils {
      */
     public static String getResponseFromHttpUrl(URL url) throws IOException {
         HttpURLConnection urlConnection = (HttpURLConnection) url.openConnection();
+        //https://stackoverflow.com/questions/2799938/httpurlconnection-timeout-question
+        urlConnection.setConnectTimeout(TIMEOUT_SECONDS);
+        InputStream in;
         try {
-            InputStream in = urlConnection.getInputStream();
-
+            if (urlConnection.getResponseCode() < HttpURLConnection.HTTP_BAD_REQUEST) {
+                in = urlConnection.getInputStream();
+            } else {
+                /* error from server
+                 * https://stackoverflow.com/questions/613307/read-error-response-body-in-java
+                 * */
+                in = urlConnection.getErrorStream();
+            }
             Scanner scanner = new Scanner(in);
             scanner.useDelimiter("\\A");
 

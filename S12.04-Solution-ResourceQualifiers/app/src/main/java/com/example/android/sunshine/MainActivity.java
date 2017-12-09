@@ -17,6 +17,7 @@ package com.example.android.sunshine;
 
 import android.content.Intent;
 import android.database.Cursor;
+import android.databinding.DataBindingUtil;
 import android.net.Uri;
 import android.os.Bundle;
 import android.support.v4.app.LoaderManager;
@@ -30,11 +31,16 @@ import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
-import android.widget.ProgressBar;
 
+import com.example.android.sunshine.data.ErrorEvent;
 import com.example.android.sunshine.data.SunshinePreferences;
 import com.example.android.sunshine.data.WeatherContract;
+import com.example.android.sunshine.databinding.ActivityForecastBinding;
 import com.example.android.sunshine.sync.SunshineSyncUtils;
+
+import org.greenrobot.eventbus.EventBus;
+import org.greenrobot.eventbus.Subscribe;
+import org.greenrobot.eventbus.ThreadMode;
 
 public class MainActivity extends AppCompatActivity implements
         LoaderManager.LoaderCallbacks<Cursor>,
@@ -74,58 +80,27 @@ public class MainActivity extends AppCompatActivity implements
     private static final int ID_FORECAST_LOADER = 44;
 
     private ForecastAdapter mForecastAdapter;
-    private RecyclerView mRecyclerView;
     private int mPosition = RecyclerView.NO_POSITION;
-
-    private ProgressBar mLoadingIndicator;
+    private ActivityForecastBinding mBinding;
 
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_forecast);
+        mBinding = DataBindingUtil.setContentView(this, R.layout.activity_forecast);
         getSupportActionBar().setElevation(0f);
 
-        /*
-         * Using findViewById, we get a reference to our RecyclerView from xml. This allows us to
-         * do things like set the adapter of the RecyclerView and toggle the visibility.
-         */
-        mRecyclerView = (RecyclerView) findViewById(R.id.recyclerview_forecast);
-
-        /*
-         * The ProgressBar that will indicate to the user that we are loading data. It will be
-         * hidden when no data is loading.
-         *
-         * Please note: This so called "ProgressBar" isn't a bar by default. It is more of a
-         * circle. We didn't make the rules (or the names of Views), we just follow them.
-         */
-        mLoadingIndicator = (ProgressBar) findViewById(R.id.pb_loading_indicator);
-
-        /*
-         * A LinearLayoutManager is responsible for measuring and positioning item views within a
-         * RecyclerView into a linear list. This means that it can produce either a horizontal or
-         * vertical list depending on which parameter you pass in to the LinearLayoutManager
-         * constructor. In our case, we want a vertical list, so we pass in the constant from the
-         * LinearLayoutManager class for vertical lists, LinearLayoutManager.VERTICAL.
-         *
-         * There are other LayoutManagers available to display your data in uniform grids,
-         * staggered grids, and more! See the developer documentation for more details.
-         *
-         * The third parameter (shouldReverseLayout) should be true if you want to reverse your
-         * layout. Generally, this is only true with horizontal lists that need to support a
-         * right-to-left layout.
-         */
         LinearLayoutManager layoutManager =
                 new LinearLayoutManager(this, LinearLayoutManager.VERTICAL, false);
 
         /* setLayoutManager associates the LayoutManager we created above with our RecyclerView */
-        mRecyclerView.setLayoutManager(layoutManager);
+        mBinding.recyclerviewForecast.setLayoutManager(layoutManager);
 
         /*
          * Use this setting to improve performance if you know that changes in content do not
          * change the child layout size in the RecyclerView
          */
-        mRecyclerView.setHasFixedSize(true);
+        mBinding.recyclerviewForecast.setHasFixedSize(true);
 
         /*
          * The ForecastAdapter is responsible for linking our weather data with the Views that
@@ -140,7 +115,7 @@ public class MainActivity extends AppCompatActivity implements
         mForecastAdapter = new ForecastAdapter(this, this);
 
         /* Setting the adapter attaches it to the RecyclerView in our layout. */
-        mRecyclerView.setAdapter(mForecastAdapter);
+        mBinding.recyclerviewForecast.setAdapter(mForecastAdapter);
 
 
         showLoading();
@@ -235,11 +210,11 @@ public class MainActivity extends AppCompatActivity implements
     @Override
     public void onLoadFinished(Loader<Cursor> loader, Cursor data) {
 
-
         mForecastAdapter.swapCursor(data);
         if (mPosition == RecyclerView.NO_POSITION) mPosition = 0;
-        mRecyclerView.smoothScrollToPosition(mPosition);
+        mBinding.recyclerviewForecast.smoothScrollToPosition(mPosition);
         if (data.getCount() != 0) showWeatherDataView();
+        mBinding.pbLoadingIndicator.setVisibility(View.INVISIBLE);
     }
 
     /**
@@ -280,9 +255,10 @@ public class MainActivity extends AppCompatActivity implements
      */
     private void showWeatherDataView() {
         /* First, hide the loading indicator */
-        mLoadingIndicator.setVisibility(View.INVISIBLE);
+        mBinding.pbLoadingIndicator.setVisibility(View.INVISIBLE);
+        mBinding.errorLayout.errorView.setVisibility(View.INVISIBLE);
         /* Finally, make sure the weather data is visible */
-        mRecyclerView.setVisibility(View.VISIBLE);
+        mBinding.recyclerviewForecast.setVisibility(View.VISIBLE);
     }
 
     /**
@@ -294,9 +270,16 @@ public class MainActivity extends AppCompatActivity implements
      */
     private void showLoading() {
         /* Then, hide the weather data */
-        mRecyclerView.setVisibility(View.INVISIBLE);
+        mBinding.recyclerviewForecast.setVisibility(View.INVISIBLE);
+        mBinding.errorLayout.errorView.setVisibility(View.INVISIBLE);
         /* Finally, show the loading indicator */
-        mLoadingIndicator.setVisibility(View.VISIBLE);
+        mBinding.pbLoadingIndicator.setVisibility(View.VISIBLE);
+    }
+
+    private void showErrorView() {
+        mBinding.recyclerviewForecast.setVisibility(View.INVISIBLE);
+        mBinding.pbLoadingIndicator.setVisibility(View.INVISIBLE);
+        mBinding.errorLayout.errorView.setVisibility(View.VISIBLE);
     }
 
     /**
@@ -342,5 +325,29 @@ public class MainActivity extends AppCompatActivity implements
         }
 
         return super.onOptionsItemSelected(item);
+    }
+
+    @Override
+    public void onStart() {
+        super.onStart();
+        EventBus.getDefault().register(this);
+    }
+
+    @Override
+    public void onStop() {
+        super.onStop();
+        EventBus.getDefault().unregister(this);
+    }
+
+    @Subscribe(threadMode = ThreadMode.MAIN)
+    public void onMessageEvent(ErrorEvent event) {
+        /* Do something */
+        mBinding.errorLayout.textViewErrorMessage.setText(event.getMessage());
+        showErrorView();
+    }
+
+    public void retry(View view) {
+        showLoading();
+        SunshineSyncUtils.startImmediateSync(this);
     }
 }

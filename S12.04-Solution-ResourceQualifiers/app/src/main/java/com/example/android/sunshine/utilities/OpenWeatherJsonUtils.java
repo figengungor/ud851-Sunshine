@@ -18,9 +18,11 @@ package com.example.android.sunshine.utilities;
 import android.content.ContentValues;
 import android.content.Context;
 
+import com.example.android.sunshine.data.ErrorEvent;
 import com.example.android.sunshine.data.SunshinePreferences;
 import com.example.android.sunshine.data.WeatherContract;
 
+import org.greenrobot.eventbus.EventBus;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -88,9 +90,11 @@ public final class OpenWeatherJsonUtils {
                     break;
                 case HttpURLConnection.HTTP_NOT_FOUND:
                     /* Location invalid */
+                    EventBus.getDefault().post(new ErrorEvent(errorCode+" : Http Not Found"));
                     return null;
                 default:
                     /* Server probably down */
+                    EventBus.getDefault().post(new ErrorEvent(errorCode+" : Server probably down"));
                     return null;
             }
         }

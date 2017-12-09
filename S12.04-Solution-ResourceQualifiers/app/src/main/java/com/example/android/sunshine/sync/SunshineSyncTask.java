@@ -20,12 +20,18 @@ import android.content.ContentValues;
 import android.content.Context;
 import android.text.format.DateUtils;
 
+import com.example.android.sunshine.R;
+import com.example.android.sunshine.data.ErrorEvent;
 import com.example.android.sunshine.data.SunshinePreferences;
 import com.example.android.sunshine.data.WeatherContract;
 import com.example.android.sunshine.utilities.NetworkUtils;
 import com.example.android.sunshine.utilities.NotificationUtils;
 import com.example.android.sunshine.utilities.OpenWeatherJsonUtils;
 
+import org.greenrobot.eventbus.EventBus;
+
+import java.io.IOException;
+import java.net.SocketTimeoutException;
 import java.net.URL;
 
 public class SunshineSyncTask {
@@ -109,6 +115,12 @@ public class SunshineSyncTask {
             }
 
         } catch (Exception e) {
+            if(e instanceof SocketTimeoutException) {
+                EventBus.getDefault().post(new ErrorEvent(context.getString(R.string.error_time_out)));
+            }
+            else if(e instanceof IOException) {
+                EventBus.getDefault().post(new ErrorEvent(context.getString(R.string.error_no_internet_connection)));
+            }
             /* Server probably invalid */
             e.printStackTrace();
         }
