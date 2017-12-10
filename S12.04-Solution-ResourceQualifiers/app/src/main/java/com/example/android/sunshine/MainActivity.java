@@ -83,7 +83,6 @@ public class MainActivity extends AppCompatActivity implements
     private int mPosition = RecyclerView.NO_POSITION;
     private ActivityForecastBinding mBinding;
 
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -214,7 +213,6 @@ public class MainActivity extends AppCompatActivity implements
         if (mPosition == RecyclerView.NO_POSITION) mPosition = 0;
         mBinding.recyclerviewForecast.smoothScrollToPosition(mPosition);
         if (data.getCount() != 0) showWeatherDataView();
-        mBinding.pbLoadingIndicator.setVisibility(View.INVISIBLE);
     }
 
     /**

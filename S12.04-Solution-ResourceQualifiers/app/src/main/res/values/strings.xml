@@ -248,5 +248,7 @@
     <string name="no_data_found">No data found. Try again.</string>
     <string name="error_time_out">Connection Timeout</string>
     <string name="error_no_internet_connection">No Internet Connection</string>
+    <string name="error_server">Server Error</string>
+    <string name="empty_data_message">No Data Found</string>
 
 </resources>

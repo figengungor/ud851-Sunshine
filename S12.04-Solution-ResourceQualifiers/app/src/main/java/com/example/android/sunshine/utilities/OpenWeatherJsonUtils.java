@@ -17,7 +17,9 @@ package com.example.android.sunshine.utilities;
 
 import android.content.ContentValues;
 import android.content.Context;
+import android.util.Log;
 
+import com.example.android.sunshine.R;
 import com.example.android.sunshine.data.ErrorEvent;
 import com.example.android.sunshine.data.SunshinePreferences;
 import com.example.android.sunshine.data.WeatherContract;
@@ -62,6 +64,8 @@ public final class OpenWeatherJsonUtils {
 
     private static final String OWM_MESSAGE_CODE = "cod";
 
+    private static final String TAG = OpenWeatherJsonUtils.class.getSimpleName();
+
     /**
      * This method parses JSON from a web response and returns an array of Strings
      * describing the weather over various days from the forecast.
@@ -90,16 +94,19 @@ public final class OpenWeatherJsonUtils {
                     break;
                 case HttpURLConnection.HTTP_NOT_FOUND:
                     /* Location invalid */
-                    EventBus.getDefault().post(new ErrorEvent(errorCode+" : Http Not Found"));
+                    EventBus.getDefault().post(new ErrorEvent(context.getString(R.string.error_server)));
+                    Log.e(TAG, errorCode+" : Http Not Found");
                     return null;
                 default:
                     /* Server probably down */
-                    EventBus.getDefault().post(new ErrorEvent(errorCode+" : Server probably down"));
+                    EventBus.getDefault().post(new ErrorEvent(context.getString(R.string.error_server)));
+                    Log.e(TAG, errorCode+" : Server probably down");
                     return null;
             }
         }
 
         JSONArray jsonWeatherArray = forecastJson.getJSONArray(OWM_LIST);
+        int jsonWeatherArrayLength = jsonWeatherArray.length();
 
         JSONObject cityJson = forecastJson.getJSONObject(OWM_CITY);
 
@@ -109,7 +116,7 @@ public final class OpenWeatherJsonUtils {
 
         SunshinePreferences.setLocationDetails(context, cityLatitude, cityLongitude);
 
-        ContentValues[] weatherContentValues = new ContentValues[jsonWeatherArray.length()];
+        ContentValues[] weatherContentValues = new ContentValues[jsonWeatherArrayLength];
 
         /*
          * OWM returns daily forecasts based upon the local time of the city that is being asked
@@ -122,7 +129,11 @@ public final class OpenWeatherJsonUtils {
 
         long normalizedUtcStartDay = SunshineDateUtils.getNormalizedUtcDateForToday();
 
-        for (int i = 0; i < jsonWeatherArray.length(); i++) {
+        if(jsonWeatherArrayLength == 0) {
+            EventBus.getDefault().post(new ErrorEvent(context.getString(R.string.empty_data_message)));
+        }
+
+        for (int i = 0; i < jsonWeatherArrayLength; i++) {
 
             long dateTimeMillis;
             double pressure;
